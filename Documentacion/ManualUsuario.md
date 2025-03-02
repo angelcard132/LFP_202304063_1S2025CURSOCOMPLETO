@@ -81,3 +81,7 @@ Cada personaje tiene:
   - **Top 5 personajes con mayor defensa.**
 
   ![alt text](image-3.png)
+
+
+### DIAGRAMA DE CLASE 
+![alt text](image-11.png)
