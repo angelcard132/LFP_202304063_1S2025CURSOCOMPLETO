@@ -6,32 +6,39 @@ class Personaje {
     private int salud;
     private int ataque;
     private int defensa;
+    private int vida;
 
     public Personaje(String nombre, int salud, int ataque, int defensa) {
         this.nombre = nombre;
         this.salud = salud;
         this.ataque = ataque;
         this.defensa = defensa;
+        this.vida = salud * 10; // Vida inicial es 10 veces la salud
     }
-
     public String getNombre() { return nombre; }
     public int getSalud() { return salud; }
     public int getAtaque() { return ataque; }
     public int getDefensa() { return defensa; }
+    public int getVida() { return vida; }
 
+    public void recibirDanio(int danio) {
+        this.vida -= danio;
+    }
+    public void restaurarVida() {
+        this.vida = this.salud * 10;
+    }
     @Override
     public String toString() {
-        return String.format("%-15s | %-6d | %-6d | %-6d", nombre, salud, ataque, defensa);
+        return String.format("%-15s | %-6d | %-6d | %-6d | %-6d", nombre, salud, ataque, defensa, vida);
     }
 }
 
 public class LFPBattleMenu {
     private static List<Personaje> personajes = new ArrayList<>();
-
+    private static List<Personaje> sobrevivientes = new ArrayList<>();
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         boolean ejecutando = true;
-
         while (ejecutando) {
             System.out.println("\n===== LFP Battle =====");
             System.out.println("1. Cargar archivo");
@@ -42,7 +49,6 @@ public class LFPBattleMenu {
             System.out.println("6. Mostrar personajes cargados");
             System.out.println("7. Salir");
             System.out.print("Seleccione una opción: ");
-
             int opcion;
             try {
                 opcion = Integer.parseInt(scanner.nextLine());
@@ -50,7 +56,6 @@ public class LFPBattleMenu {
                 System.out.println("Por favor, ingrese un número válido.");
                 continue;
             }
-
             switch (opcion) {
                 case 1:
                     System.out.print("Ingrese la ruta del archivo .lfp: ");
@@ -58,8 +63,7 @@ public class LFPBattleMenu {
                     cargarArchivo(rutaArchivo);
                     break;
                 case 2:
-                    System.out.println("Iniciando juego...");
-                    // Implementar lógica de juego
+                    iniciarJuego();
                     break;
                 case 3:
                     generarReporte("ataque");
@@ -120,12 +124,56 @@ public class LFPBattleMenu {
         }
 
         System.out.println("\n===== Lista de Personajes =====");
-        System.out.println(String.format("%-15s | %-6s | %-6s | %-6s", "Nombre", "Salud", "Ataque", "Defensa"));
-        System.out.println("--------------------------------------------");
+        System.out.println(String.format("%-15s | %-6s | %-6s | %-6s | %-6s", "Nombre", "Salud", "Ataque", "Defensa", "Vida"));
+        System.out.println("-------------------------------------------------------------");
 
         for (Personaje p : personajes) {
             System.out.println(p);
         }
+    }
+
+    private static void iniciarJuego() {
+        if (personajes.isEmpty()) {
+            System.out.println("No hay personajes cargados. Primero cargue un archivo.");
+            return;
+        }
+
+        sobrevivientes = new ArrayList<>(personajes);
+        while (sobrevivientes.size() > 1) {
+            List<Personaje> ganadores = new ArrayList<>();
+            for (int i = 0; i < sobrevivientes.size(); i += 2) {
+                if (i + 1 < sobrevivientes.size()) {
+                    Personaje ganador = combatir(sobrevivientes.get(i), sobrevivientes.get(i + 1));
+                    ganador.restaurarVida(); // Restaurar vida al ganador
+                    ganadores.add(ganador);
+                } else {
+                    sobrevivientes.get(i).restaurarVida(); // Restaurar vida al que avanza automáticamente
+                    ganadores.add(sobrevivientes.get(i));
+                }
+            }
+            sobrevivientes = ganadores;
+        }
+
+        System.out.println("El campeón del torneo es: " + sobrevivientes.get(0).getNombre());
+    }
+
+    private static Personaje combatir(Personaje p1, Personaje p2) {
+        System.out.println("\nCombate entre " + p1.getNombre() + " y " + p2.getNombre());
+        while (p1.getVida() > 0 && p2.getVida() > 0) {
+            int danio1 = Math.max(0, p1.getAtaque() - p2.getDefensa());
+            p2.recibirDanio(danio1);
+            System.out.println(p1.getNombre() + " ataca a " + p2.getNombre() + " y causa " + danio1 + " de daño. Vida restante de " + p2.getNombre() + ": " + p2.getVida());
+
+            if (p2.getVida() <= 0) break;
+
+            int danio2 = Math.max(0, p2.getAtaque() - p1.getDefensa());
+            p1.recibirDanio(danio2);
+            System.out.println(p2.getNombre() + " ataca a " + p1.getNombre() + " y causa " + danio2 + " de daño. Vida restante de " + p1.getNombre() + ": " + p1.getVida());
+        }
+
+        Personaje ganador = p1.getVida() > 0 ? p1 : p2;
+        System.out.println("El ganador es: " + ganador.getNombre());
+        return ganador;
     }
 
     public static void generarReporte(String tipo) {
@@ -160,7 +208,7 @@ public class LFPBattleMenu {
             writer.write("body { font-family: Arial, sans-serif; text-align: center; }");
             writer.write("table { width: 40%; margin: auto; border-collapse: collapse; }");
             writer.write("th, td { border: 1px solid black; padding: 10px; text-align: center; }");
-            writer.write("th { background-color: #4CAF50; color: white; }");
+            writer.write("th { background-color:rgb(120, 118, 240); color: white; }");
             writer.write("</style></head><body>");
             writer.write("<h2>" + titulo + "</h2>");
 
