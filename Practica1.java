@@ -15,6 +15,7 @@ class Personaje {
         this.defensa = defensa;
         this.vida = salud * 10; // Vida inicial es 10 veces la salud
     }
+
     public String getNombre() { return nombre; }
     public int getSalud() { return salud; }
     public int getAtaque() { return ataque; }
@@ -24,21 +25,25 @@ class Personaje {
     public void recibirDanio(int danio) {
         this.vida -= danio;
     }
+
     public void restaurarVida() {
         this.vida = this.salud * 10;
     }
+
     @Override
     public String toString() {
         return String.format("%-15s | %-6d | %-6d | %-6d | %-6d", nombre, salud, ataque, defensa, vida);
     }
 }
 
-public class LFPBattleMenu {
+public class Practica1 {
     private static List<Personaje> personajes = new ArrayList<>();
     private static List<Personaje> sobrevivientes = new ArrayList<>();
+
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         boolean ejecutando = true;
+
         while (ejecutando) {
             System.out.println("\n===== LFP Battle =====");
             System.out.println("1. Cargar archivo");
@@ -49,6 +54,7 @@ public class LFPBattleMenu {
             System.out.println("6. Mostrar personajes cargados");
             System.out.println("7. Salir");
             System.out.print("Seleccione una opción: ");
+
             int opcion;
             try {
                 opcion = Integer.parseInt(scanner.nextLine());
@@ -56,6 +62,7 @@ public class LFPBattleMenu {
                 System.out.println("Por favor, ingrese un número válido.");
                 continue;
             }
+
             switch (opcion) {
                 case 1:
                     System.out.print("Ingrese la ruta del archivo .lfp: ");
@@ -72,8 +79,10 @@ public class LFPBattleMenu {
                     generarReporte("defensa");
                     break;
                 case 5:
-                    System.out.println("Desarrollador: [Nombre del estudiante]");
-                    System.out.println("Carnet: [Número de carnet]");
+                    System.out.println("Estudiante: Angel JOse Cardenas Pocon");
+                    System.out.println("Carnet: 202304063");
+                    System.out.println("Curso: Lenguajes Formales y de Programación");
+                    System.out.println("Sección: B-");
                     break;
                 case 6:
                     mostrarPersonajes();
@@ -178,7 +187,7 @@ public class LFPBattleMenu {
 
     public static void generarReporte(String tipo) {
         if (personajes.isEmpty()) {
-            System.out.println("No hay personajes cargados. Primero cargue un archivo.");
+            System.out.println("No hay personajes cargados.");
             return;
         }
 
@@ -231,3 +240,5 @@ public class LFPBattleMenu {
         }
     }
 }
+
+
