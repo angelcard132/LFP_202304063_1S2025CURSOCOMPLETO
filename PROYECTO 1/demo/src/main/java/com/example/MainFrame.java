@@ -88,21 +88,26 @@ public class MainFrame extends JFrame {
 
         errorArea = new JTextArea(10, 50);
         errorArea.setEditable(false);
-        JScrollPane errorScrollPane = new JScrollPane(errorArea);
+        JScrollPane errorScrollPanel = new JScrollPane(errorArea);
 
          // Tabla para mostrar tokens
        tokenTableModel = new DefaultTableModel(new String[]{"Tipo de Token", "Valor"}, 0);
        tokenTable = new JTable(tokenTableModel);
         JScrollPane tokenScrollPane = new JScrollPane(tokenTable);
-   
+        
+        // Tabla para mostrar errores
+    errorTableModel = new DefaultTableModel(new String[]{"Error", "Descripción"}, 0);
+    JTable errorTable = new JTable(errorTableModel);
+    JScrollPane errorScrollPane = new JScrollPane(errorTable);
+
 
         // Panel central para las áreas de texto
         JPanel centerPanel = new JPanel();
-        centerPanel.setLayout(new GridLayout(2, 1));
+        centerPanel.setLayout(new GridLayout(3, 1)); // Cambiar a 3 filas
         centerPanel.add(new JLabel("Contenido del Archivo:"));
         centerPanel.add(fileScrollPane);
         centerPanel.add(new JLabel("Errores Léxicos:"));
-        centerPanel.add(errorScrollPane);
+        centerPanel.add(errorScrollPane); // Mostrar tabla de errores
         centerPanel.add(new JLabel("Tokens Encontrados:"));
         centerPanel.add(tokenScrollPane);
 
@@ -164,6 +169,12 @@ public class MainFrame extends JFrame {
             errorArea.setText(errorText.toString());
         }
 
+        errorTableModel.setRowCount(0); // Limpiar la tabla de errores
+        for (String error : analyzer.getErrors()) {
+            String[] errorParts = error.split(": ", 2);
+            errorTableModel.addRow(errorParts);
+        }
+
         // Mostrar tokens en la tabla
         tokenTableModel.setRowCount(0); // Limpiar la tabla
         for (String token : analyzer.getTokens()) {
@@ -210,18 +221,18 @@ public class MainFrame extends JFrame {
                 writer.println("<h1>Reporte de Errores</h1>");
                 writer.println("<table border='1'>");
                 writer.println("<tr><th>Error</th><th>Descripción</th></tr>");
-
+    
                 for (int i = 0; i < errorTableModel.getRowCount(); i++) {
                     String error = errorTableModel.getValueAt(i, 0).toString();
                     String descripcion = errorTableModel.getValueAt(i, 1).toString();
                     writer.println("<tr><td>" + error + "</td><td>" + descripcion + "</td></tr>");
                 }
-
+    
                 writer.println("</table>");
                 writer.println("</body>");
                 writer.println("</html>");
             }
-
+    
             JOptionPane.showMessageDialog(this, "Archivo HTML de errores generado exitosamente: " + htmlFile.getAbsolutePath(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error al generar el archivo HTML de errores: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
