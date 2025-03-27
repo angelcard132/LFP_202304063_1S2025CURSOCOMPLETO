@@ -1,9 +1,7 @@
 package com.example;
 
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
@@ -13,12 +11,27 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableModel;
+
 public class MainFrame extends JFrame {
     private JComboBox<String> automataComboBox;
     private JButton loadFileButton, graphButton, tokenReportButton, errorReportButton;
     private JTextArea fileContentArea, errorArea;
      private JTable tokenTable;
     private DefaultTableModel tokenTableModel, errorTableModel;
+    private LexicalAnalyzer analyzer; // Variable de instancia para el analizador léxico
+
 
     
     public MainFrame() {
@@ -27,6 +40,7 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         initUI();
+        
     }
     
     private void initUI() {
@@ -46,6 +60,8 @@ public class MainFrame extends JFrame {
             }
         });
 
+
+        
         graphButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -118,6 +134,8 @@ public class MainFrame extends JFrame {
 
         add(panel);
     }
+
+    
     
     private void cargarArchivo() {
         JFileChooser fileChooser = new JFileChooser();
@@ -126,7 +144,6 @@ public class MainFrame extends JFrame {
 
         if (resultado == JFileChooser.APPROVE_OPTION) {
             File archivoSeleccionado = fileChooser.getSelectedFile();
-            JOptionPane.showMessageDialog(this, "Archivo cargado: " + archivoSeleccionado.getName(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
 
             try {
                 // Leer el contenido del archivo
@@ -140,8 +157,40 @@ public class MainFrame extends JFrame {
 
                 // Mostrar el contenido del archivo en el área de texto
                 fileContentArea.setText(content.toString());
+
+                // Procesar el contenido para llenar el JComboBox
+                analyzer = new LexicalAnalyzer(); // Crear una nueva instancia del analizador
+                analyzer.analyze(content.toString());
+
+                // Limpiar el JComboBox y agregar los nombres de los autómatas
+                automataComboBox.removeAllItems();
+                for (LexicalAnalyzer.Automaton automaton : analyzer.getAutomata()) {
+                    automataComboBox.addItem(automaton.getNombre());
+                }
+
+                // Mostrar el primer autómata en el área de texto
+                if (automataComboBox.getItemCount() > 0) {
+                    automataComboBox.setSelectedIndex(0);
+                    mostrarAutomataSeleccionado();
+                }
+
+                // Mostrar mensaje de éxito después de llenar el JComboBox
+                JOptionPane.showMessageDialog(this, "Archivo cargado: " + archivoSeleccionado.getName(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
+
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error al leer el archivo: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void mostrarAutomataSeleccionado() {
+        String nombreSeleccionado = (String) automataComboBox.getSelectedItem();
+        if (nombreSeleccionado != null && analyzer != null) {
+            for (LexicalAnalyzer.Automaton automaton : analyzer.getAutomata()) {
+                if (automaton.getNombre().equals(nombreSeleccionado)) {
+                    fileContentArea.setText(automaton.toString());
+                    break;
+                }
             }
         }
     }
@@ -250,70 +299,58 @@ public class MainFrame extends JFrame {
     public class LexicalAnalyzer {
         private List<String> tokens;
         private List<String> errors;
+        private List<Automaton> automata; // Lista para almacenar los autómatas
     
         public LexicalAnalyzer() {
             tokens = new ArrayList<>();
             errors = new ArrayList<>();
+            automata = new ArrayList<>();
+        }
+        
+        
+
+        public List<Automaton> getAutomata() {
+            return automata;
         }
     
         public void analyze(String content) {
             tokens.clear();
             errors.clear();
-    
+            automata.clear();
+        
             int length = content.length();
             StringBuilder currentToken = new StringBuilder();
             int openBraces = 0; // Contador para '{'
-            int openBrackets = 0; // Contador para '['
-    
+        
+            Automaton currentAutomaton = null;
+        
+            // Conjunto de símbolos válidos
+            String validSymbols = "{}(),\":";
+        
             for (int i = 0; i < length; i++) {
                 char c = content.charAt(i);
-    
+        
                 if (Character.isWhitespace(c)) {
-                    // Ignorar espacios en blanco
-                    continue;
-                } else if (c == '{') {
-                    openBraces++;
+                    continue; // Ignorar espacios en blanco
+                } else if (validSymbols.indexOf(c) != -1) {
+                    // Símbolo válido
                     tokens.add("SIMBOLO: " + c);
-                } else if (c == '}') {
-                    if (openBraces > 0) {
-                        openBraces--;
-                        tokens.add("SIMBOLO: " + c);
-                    } else {
-                        errors.add("Error: Símbolo '}' no tiene un '{' correspondiente en posición " + i);
-                    }
-                } else if (c == '[') {
-                    openBrackets++;
-                    tokens.add("SIMBOLO: " + c);
-                } else if (c == ']') {
-                    if (openBrackets > 0) {
-                        openBrackets--;
-                        tokens.add("SIMBOLO: " + c);
-                    } else {
-                        errors.add("Error: Símbolo ']' no tiene un '[' correspondiente en posición " + i);
-                    }
-                } else if (c == '(' || c == ')') {
-                    // Reconocer paréntesis como símbolos válidos
-                    tokens.add("SIMBOLO: " + c);
-                } else if (c == '=') {
-                    // Reconocer el símbolo '=' como válido
-                    tokens.add("SIMBOLO: " + c);
-                } else if (c == ':') {
-                    tokens.add("SIMBOLO: " + c);
-                } else if (c == ',') {
-                    tokens.add("SIMBOLO: " + c);
-                } else if (c == '"') {
-                    // Procesar cadenas
-                    int start = i;
-                    i++;
-                    while (i < length && content.charAt(i) != '"') {
-                        currentToken.append(content.charAt(i));
-                        i++;
-                    }
-                    if (i < length && content.charAt(i) == '"') {
-                        tokens.add("CADENA: \"" + currentToken.toString() + "\"");
-                        currentToken.setLength(0);
-                    } else {
-                        errors.add("Error: Cadena no cerrada iniciada en posición " + start);
+        
+                    if (c == '{') {
+                        openBraces++;
+                        if (currentAutomaton == null) {
+                            currentAutomaton = new Automaton();
+                        }
+                    } else if (c == '}') {
+                        if (openBraces > 0) {
+                            openBraces--;
+                            if (openBraces == 0 && currentAutomaton != null) {
+                                automata.add(currentAutomaton);
+                                currentAutomaton = null;
+                            }
+                        } else {
+                            errors.add("Error: Símbolo '}' no tiene un '{' correspondiente en posición " + i);
+                        }
                     }
                 } else if (Character.isLetter(c)) {
                     // Procesar identificadores
@@ -322,7 +359,26 @@ public class MainFrame extends JFrame {
                         i++;
                         currentToken.append(content.charAt(i));
                     }
-                    tokens.add("IDENTIFICADOR: " + currentToken.toString());
+                    String token = currentToken.toString();
+                    tokens.add("IDENTIFICADOR: " + token);
+        
+                    // Manejar palabras clave dentro del autómata actual
+                    if (currentAutomaton != null) {
+                        if (token.equals("descripcion")) {
+                            currentAutomaton.setDescripcion(extractValue(content, i + 1));
+                        } else if (token.equals("estados")) {
+                            currentAutomaton.setEstados(extractList(content, i + 1));
+                        } else if (token.equals("alfabeto")) {
+                            currentAutomaton.setAlfabeto(extractList(content, i + 1));
+                        } else if (token.equals("inicial")) {
+                            currentAutomaton.setInicial(extractValue(content, i + 1));
+                        } else if (token.equals("finales")) {
+                            currentAutomaton.setFinales(extractList(content, i + 1));
+                        } else if (token.equals("transiciones")) {
+                            currentAutomaton.setTransiciones(extractTransitions(content, i + 1));
+                        }
+                    }
+        
                     currentToken.setLength(0);
                 } else if (Character.isDigit(c)) {
                     // Procesar números
@@ -333,23 +389,97 @@ public class MainFrame extends JFrame {
                     }
                     tokens.add("NUMERO: " + currentToken.toString());
                     currentToken.setLength(0);
-                } else if (c == '-' && i + 1 < length && content.charAt(i + 1) == '>') {
-                    // Procesar flechas (->)
-                    tokens.add("FLECHA: ->");
-                    i++;
+                } else if (c == '$' || c == '+' || c == '/' || c == '@' || c== '?' || c == '!' || c == '%' || c == '&' || c == '#' || c == '*' || c == '^' || c == '~' || c == '`' || c == '|' || c == '\\' || c == '¿') {  
+                    // Detectar símbolos no permitidos específicos
+                    errors.add("Error: Símbolo no permitido '" + c + "' en posición " + i);
                 } else {
-                    // Caracter no reconocido
-                    errors.add("Error: Caracter no reconocido '" + c + "' en posición " + i);
+                    // Detectar cualquier otro carácter no válido
+                    tokens.add("SIMBOLO: " + c); // Considerar como símbolo válido
                 }
             }
-    
-            // Verificar si hay corchetes o llaves sin cerrar
+        
+            // Verificar si hay llaves sin cerrar
             if (openBraces > 0) {
                 errors.add("Error: Falta cerrar " + openBraces + " llave(s) '}'");
             }
-            if (openBrackets > 0) {
-                errors.add("Error: Falta cerrar " + openBrackets + " corchete(s) ']'");
+        
+            // Validar cada autómata
+            for (Automaton automaton : automata) {
+                automaton.validate(errors);
             }
+        }
+
+        private String extractValue(String content, int startIndex) {
+            int start = content.indexOf(":", startIndex) + 1;
+            int end = content.indexOf(",", start);
+            if (start > 0 && end > start) {
+                return content.substring(start, end).trim().replace("\"", "");
+            }
+            errors.add("Error: Valor no válido para definición en posición " + startIndex);
+            return null;
+        }
+    
+        private List<String> extractList(String content, int startIndex) {
+            int start = content.indexOf("[", startIndex) + 1;
+            int end = content.indexOf("]", start);
+            if (start > 0 && end > start) {
+                String[] items = content.substring(start, end).split(",");
+                List<String> list = new ArrayList<>();
+                for (String item : items) {
+                    // Eliminar comillas y espacios en blanco
+                    list.add(item.trim().replace("\"", ""));
+                }
+                return list;
+            }
+            errors.add("Error: Lista no válida en posición " + startIndex);
+            return new ArrayList<>();
+        }
+    
+        private List<String[]> extractTransitions(String content, int startIndex) {
+            int start = content.indexOf("{", startIndex) + 1;
+            int end = content.indexOf("}", start);
+            List<String[]> transitions = new ArrayList<>();
+            if (start > 0 && end > start) {
+                // Extraer el bloque de transiciones
+                String transitionsBlock = content.substring(start, end).trim();
+                String[] stateTransitions = transitionsBlock.split("\\),"); // Dividir por '),'
+        
+                for (String stateTransition : stateTransitions) {
+                    stateTransition = stateTransition.trim();
+                    if (stateTransition.endsWith(")")) {
+                        stateTransition = stateTransition.substring(0, stateTransition.length() - 1); // Eliminar ')'
+                    }
+        
+                    // Separar el estado origen de las transiciones
+                    String[] stateParts = stateTransition.split("=", 2);
+                    if (stateParts.length == 2) {
+                        String state = stateParts[0].trim(); // Estado origen
+                        String transitionsList = stateParts[1].trim();
+        
+                        // Procesar cada transición individual
+                        transitionsList = transitionsList.replace("(", "").replace(")", ""); // Eliminar paréntesis
+                        String[] individualTransitions = transitionsList.split(",");
+        
+                        for (String transition : individualTransitions) {
+                            String[] parts = transition.split("->");
+                            if (parts.length == 2) {
+                                String symbol = parts[0].trim().replace("\"", ""); // Símbolo
+                                String targetState = parts[1].trim(); // Estado destino
+        
+                                // Agregar la transición a la lista
+                                transitions.add(new String[]{state, symbol, targetState});
+                            } else {
+                                errors.add("Error: Transición no válida '" + transition + "'");
+                            }
+                        }
+                    } else {
+                        errors.add("Error: Transición no válida '" + stateTransition + "'");
+                    }
+                }
+            } else {
+                errors.add("Error: Transiciones no válidas en posición " + startIndex);
+            }
+            return transitions;
         }
     
         public List<String> getTokens() {
@@ -358,6 +488,104 @@ public class MainFrame extends JFrame {
     
         public List<String> getErrors() {
             return errors;
+        }
+    
+        // Clase para representar un autómata
+        private static class Automaton {
+            private String nombre; // Nombre del autómata
+            private String descripcion;
+            private List<String> estados;
+            private List<String> alfabeto;
+            private String inicial;
+            private List<String> finales;
+            private List<String[]> transiciones;
+    
+            public Automaton() {
+                estados = new ArrayList<>();
+                alfabeto = new ArrayList<>();
+                finales = new ArrayList<>();
+                transiciones = new ArrayList<>();
+            }
+            
+            
+
+            public void setNombre(String nombre) {
+                this.nombre = nombre;
+            }
+    
+            public String getNombre() {
+                return nombre;
+            }
+    
+            public void setDescripcion(String descripcion) {
+                this.descripcion = descripcion;
+            }
+    
+            public void setEstados(List<String> estados) {
+                this.estados = estados;
+            }
+    
+            public void setAlfabeto(List<String> alfabeto) {
+                this.alfabeto = alfabeto;
+            }
+    
+            public void setInicial(String inicial) {
+                this.inicial = inicial;
+            }
+    
+            public void setFinales(List<String> finales) {
+                this.finales = finales;
+            }
+    
+            public void setTransiciones(List<String[]> transiciones) {
+                this.transiciones = transiciones;
+            }
+    
+            public void validate(List<String> errors) {
+                // Validar estado inicial
+                if (inicial == null || !estados.contains(inicial)) {
+                    errors.add("Error: El estado inicial '" + inicial + "' no está definido en los estados.");
+                }
+            
+                // Validar estados finales
+                for (String estadoFinal : finales) {
+                    if (!estados.contains(estadoFinal)) {
+                        errors.add("Error: El estado final '" + estadoFinal + "' no está definido en los estados.");
+                    }
+                }
+            
+                // Validar transiciones
+                for (String[] transicion : transiciones) {
+                    if (!estados.contains(transicion[0])) {
+                        errors.add("Error: El estado de origen '" + transicion[0] + "' no está definido en los estados.");
+                    }
+                    String simbolo = transicion[1].trim(); // Eliminar espacios en blanco
+                    if (!alfabeto.contains(simbolo)) {
+                        errors.add("Error: El símbolo '" + simbolo + "' no está definido en el alfabeto.");
+                    }
+                    if (!estados.contains(transicion[2])) {
+                        errors.add("Error: El estado de destino '" + transicion[2] + "' no está definido en los estados.");
+                    }
+                }
+            }
+    
+            @Override
+            public String toString() {
+                StringBuilder sb = new StringBuilder();
+                sb.append(nombre).append(": {\n");
+                sb.append("  descripcion: \"").append(descripcion).append("\",\n");
+                sb.append("  estados: ").append(estados).append(",\n");
+                sb.append("  alfabeto: ").append(alfabeto).append(",\n");
+                sb.append("  inicial: ").append(inicial).append(",\n");
+                sb.append("  finales: ").append(finales).append(",\n");
+                sb.append("  transiciones: {\n");
+                for (String[] transicion : transiciones) {
+                    sb.append("    ").append(transicion[0]).append(" = (\"").append(transicion[1]).append("\" -> ").append(transicion[2]).append("),\n");
+                }
+                sb.append("  }\n");
+                sb.append("}\n");
+                return sb.toString();
+            }
         }
     }
 }
