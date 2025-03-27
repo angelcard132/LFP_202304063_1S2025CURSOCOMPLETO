@@ -11,6 +11,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
@@ -19,6 +20,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
@@ -28,12 +30,11 @@ public class MainFrame extends JFrame {
     private JComboBox<String> automataComboBox;
     private JButton loadFileButton, graphButton, tokenReportButton, errorReportButton;
     private JTextArea fileContentArea, errorArea;
-     private JTable tokenTable;
+    private JLabel imageLabel; // Declare imageLabel as an instance variable
+    private JTable tokenTable;
     private DefaultTableModel tokenTableModel, errorTableModel;
     private LexicalAnalyzer analyzer; // Variable de instancia para el analizador léxico
 
-
-    
     public MainFrame() {
         setTitle("AFD Graph - Visualización de Autómatas");
         setSize(600, 400);
@@ -44,96 +45,117 @@ public class MainFrame extends JFrame {
     }
     
     private void initUI() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout());
-        
-        // Panel superior con botones
-        JPanel topPanel = new JPanel();
-        loadFileButton = new JButton("Cargar Archivo .lfp");
-        automataComboBox = new JComboBox<>();
-        graphButton = new JButton("Graficar");
-        
-        loadFileButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                cargarArchivo();
+    JTabbedPane tabbedPane = new JTabbedPane(); // Crear el contenedor de pestañas
+
+    // Panel principal con botones y tablas
+    JPanel mainPanel = new JPanel();
+    mainPanel.setLayout(new BorderLayout());
+
+    // Panel superior con botones
+    JPanel topPanel = new JPanel();
+    loadFileButton = new JButton("Cargar Archivo .lfp");
+    automataComboBox = new JComboBox<>();
+    graphButton = new JButton("Graficar");
+
+    loadFileButton.addActionListener(new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            cargarArchivo();
+        }
+    });
+
+    graphButton.addActionListener(new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            analizarContenido(); // Generar el archivo .dot y la imagen PNG
+            File imageFile = new File("automata.png");
+            if (imageFile.exists()) {
+                // Forzar la recarga de la imagen
+                ImageIcon imageIcon = new ImageIcon(imageFile.getAbsolutePath());
+                imageLabel.setIcon(imageIcon);
+                imageLabel.setText(""); // Eliminar el texto si se muestra la imagen
+            } else {
+                imageLabel.setIcon(null);
+                imageLabel.setText("No hay imagen para mostrar.");
             }
-        });
+    
+            // Actualizar el panel de la pestaña para reflejar los cambios
+            imageLabel.revalidate();
+            imageLabel.repaint();
+        }
+    });
 
+    topPanel.add(loadFileButton);
+    topPanel.add(automataComboBox);
+    topPanel.add(graphButton);
 
-        
-        graphButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                analizarContenido();
-            }
-        });
-        
-        topPanel.add(loadFileButton);
-        topPanel.add(automataComboBox);
-        topPanel.add(graphButton);
+    // Panel inferior con tablas y áreas de texto
+    JPanel bottomPanel = new JPanel();
+    bottomPanel.setLayout(new GridLayout(3, 1)); // Cambiar a 3 filas
 
-        // Panel inferior con botones de reportes
-        JPanel bottomPanel = new JPanel();
-        tokenReportButton = new JButton("Reporte de Tokens");
-        errorReportButton = new JButton("Reporte de Errores");
+    // Áreas de texto para mostrar contenido del archivo y errores
+    fileContentArea = new JTextArea(15, 50);
+    fileContentArea.setEditable(false);
+    JScrollPane fileScrollPane = new JScrollPane(fileContentArea);
 
-         // Asignar funcionalidad al botón "Reporte de Tokens"
-         tokenReportButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                generarArchivoHTML();
-            }
-        });
+    errorArea = new JTextArea(10, 50);
+    errorArea.setEditable(false);
+    JScrollPane errorScrollPanel = new JScrollPane(errorArea);
 
-        // Asignar funcionalidad al botón "Reporte de Errores"
-        errorReportButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                generarArchivoErroresHTML();
-            }
-        });
+    // Tabla para mostrar tokens
+    tokenTableModel = new DefaultTableModel(new String[]{"Tipo de Token", "Valor"}, 0);
+    tokenTable = new JTable(tokenTableModel);
+    JScrollPane tokenScrollPane = new JScrollPane(tokenTable);
 
-        bottomPanel.add(tokenReportButton);
-        bottomPanel.add(errorReportButton);
-
-        // Áreas de texto para mostrar contenido del archivo y errores
-        fileContentArea = new JTextArea(15, 50);
-        fileContentArea.setEditable(false);
-        JScrollPane fileScrollPane = new JScrollPane(fileContentArea);
-
-        errorArea = new JTextArea(10, 50);
-        errorArea.setEditable(false);
-        JScrollPane errorScrollPanel = new JScrollPane(errorArea);
-
-         // Tabla para mostrar tokens
-       tokenTableModel = new DefaultTableModel(new String[]{"Tipo de Token", "Valor"}, 0);
-       tokenTable = new JTable(tokenTableModel);
-        JScrollPane tokenScrollPane = new JScrollPane(tokenTable);
-        
-        // Tabla para mostrar errores
+    // Tabla para mostrar errores
     errorTableModel = new DefaultTableModel(new String[]{"Error", "Descripción"}, 0);
     JTable errorTable = new JTable(errorTableModel);
     JScrollPane errorScrollPane = new JScrollPane(errorTable);
 
+    // Agregar componentes al panel inferior
+    bottomPanel.add(new JLabel("Contenido del Archivo:"));
+    bottomPanel.add(fileScrollPane);
+    bottomPanel.add(new JLabel("Errores Léxicos:"));
+    bottomPanel.add(errorScrollPanel);
+    bottomPanel.add(new JLabel("Tokens Encontrados:"));
+    bottomPanel.add(tokenScrollPane);
 
-        // Panel central para las áreas de texto
-        JPanel centerPanel = new JPanel();
-        centerPanel.setLayout(new GridLayout(3, 1)); // Cambiar a 3 filas
-        centerPanel.add(new JLabel("Contenido del Archivo:"));
-        centerPanel.add(fileScrollPane);
-        centerPanel.add(new JLabel("Errores Léxicos:"));
-        centerPanel.add(errorScrollPane); // Mostrar tabla de errores
-        centerPanel.add(new JLabel("Tokens Encontrados:"));
-        centerPanel.add(tokenScrollPane);
+    // Agregar paneles al panel principal
+    mainPanel.add(topPanel, BorderLayout.NORTH);
+    mainPanel.add(bottomPanel, BorderLayout.CENTER);
 
-        // Agregar paneles a la ventana
-        panel.add(topPanel, BorderLayout.NORTH);
-        panel.add(centerPanel, BorderLayout.CENTER);
-        panel.add(bottomPanel, BorderLayout.SOUTH);
+    // Agregar el panel principal como una pestaña
+    tabbedPane.addTab("Principal", mainPanel);
 
-        add(panel);
-    }
+    // Crear un panel para mostrar la imagen PNG
+    imageLabel = new JLabel("No hay imagen para mostrar."); // Initialize the instance variable
+    JPanel imagePanel = new JPanel(new BorderLayout()); // Declare and initialize imagePanel
+    JLabel imageLabel = new JLabel("No hay imagen para mostrar.");
+    imagePanel.add(imageLabel, BorderLayout.CENTER);
+
+    // Agregar el panel de imagen como una pestaña
+    tabbedPane.addTab("Visualización de Imagen", imagePanel);
+
+    // Agregar el contenedor de pestañas a la ventana
+    add(tabbedPane);
+
+    // Método para actualizar la imagen en el panel
+    graphButton.addActionListener(new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            analizarContenido();
+            File imageFile = new File("automata.png");
+            if (imageFile.exists()) {
+                ImageIcon imageIcon = new ImageIcon(imageFile.getAbsolutePath());
+                imageLabel.setIcon(imageIcon);
+                imageLabel.setText(""); // Eliminar el texto si se muestra la imagen
+            } else {
+                imageLabel.setIcon(null);
+                imageLabel.setText("No hay imagen para mostrar.");
+            }
+        }
+    });
+}
 
     
     
@@ -141,10 +163,10 @@ public class MainFrame extends JFrame {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
         int resultado = fileChooser.showOpenDialog(this);
-
+    
         if (resultado == JFileChooser.APPROVE_OPTION) {
             File archivoSeleccionado = fileChooser.getSelectedFile();
-
+    
             try {
                 // Leer el contenido del archivo
                 StringBuilder content = new StringBuilder();
@@ -154,29 +176,20 @@ public class MainFrame extends JFrame {
                         content.append(line).append("\n");
                     }
                 }
-
+    
                 // Mostrar el contenido del archivo en el área de texto
                 fileContentArea.setText(content.toString());
-
-                // Procesar el contenido para llenar el JComboBox
+    
+                // Procesar el contenido
                 analyzer = new LexicalAnalyzer(); // Crear una nueva instancia del analizador
                 analyzer.analyze(content.toString());
-
-                // Limpiar el JComboBox y agregar los nombres de los autómatas
-                automataComboBox.removeAllItems();
-                for (LexicalAnalyzer.Automaton automaton : analyzer.getAutomata()) {
-                    automataComboBox.addItem(automaton.getNombre());
-                }
-
-                // Mostrar el primer autómata en el área de texto
-                if (automataComboBox.getItemCount() > 0) {
-                    automataComboBox.setSelectedIndex(0);
-                    mostrarAutomataSeleccionado();
-                }
-
-                // Mostrar mensaje de éxito después de llenar el JComboBox
+    
+                // Mostrar mensaje de éxito después de cargar el archivo
                 JOptionPane.showMessageDialog(this, "Archivo cargado: " + archivoSeleccionado.getName(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
-
+    
+                // Graficar el autómata automáticamente
+                generarGraphviz();
+    
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error al leer el archivo: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -230,6 +243,7 @@ public class MainFrame extends JFrame {
             String[] tokenParts = token.split(": ", 2);
             tokenTableModel.addRow(tokenParts);
         }
+        generarGraphviz();
     }
 
      private void generarArchivoHTML() {
@@ -287,7 +301,80 @@ public class MainFrame extends JFrame {
             JOptionPane.showMessageDialog(this, "Error al generar el archivo HTML de errores: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
- 
+    
+    private void generarGraphviz() {
+        if (analyzer == null || analyzer.getAutomata().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No hay un autómata cargado para graficar.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+    
+        // Obtener el único autómata cargado
+        LexicalAnalyzer.Automaton automaton = analyzer.getAutomata().get(0);
+    
+        // Validar que los datos del autómata estén disponibles
+        if (automaton.getFinales() == null || automaton.getFinales().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El autómata no tiene estados finales definidos.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (automaton.getInicial() == null || automaton.getInicial().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El autómata no tiene un estado inicial definido.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (automaton.getTransiciones() == null || automaton.getTransiciones().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El autómata no tiene transiciones definidas.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+    
+        // Generar el archivo .dot
+        File dotFile = new File("automata.dot");
+        try (PrintWriter writer = new PrintWriter(dotFile)) {
+            writer.println("digraph Automaton {");
+            writer.println("    rankdir=LR;"); // Dirección de izquierda a derecha
+            writer.println("    node [shape=circle];");
+    
+            // Estados finales
+            for (String estadoFinal : automaton.getFinales()) {
+                writer.println("    " + estadoFinal + " [shape=doublecircle];");
+            }
+    
+            // Estado inicial
+            writer.println("    inicio [shape=point];");
+            writer.println("    inicio -> " + automaton.getInicial() + ";");
+    
+            // Transiciones
+            for (String[] transicion : automaton.getTransiciones()) {
+                if (transicion.length == 3) { // Validar que la transición tenga 3 elementos
+                    String origen = transicion[0];
+                    String simbolo = transicion[1];
+                    String destino = transicion[2];
+                    writer.println("    " + origen + " -> " + destino + " [label=\"" + simbolo + "\"];");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Transición inválida encontrada en el autómata.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+    
+            writer.println("}");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al generar el archivo .dot: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+    
+        // Ejecutar Graphviz para generar la imagen
+        try {
+            Process process = Runtime.getRuntime().exec("dot -Tpng automata.dot -o automata.png");
+            process.waitFor();
+    
+            // Mostrar la imagen generada
+            File imageFile = new File("automata.png");
+            if (imageFile.exists()) {
+                JOptionPane.showMessageDialog(this, "Automata graficado exitosamente: " + imageFile.getAbsolutePath(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "No se pudo generar la imagen del autómata.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al ejecutar Graphviz: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -532,13 +619,25 @@ public class MainFrame extends JFrame {
             public void setInicial(String inicial) {
                 this.inicial = inicial;
             }
+
+            public String getInicial() {
+                return inicial;
+            }
     
             public void setFinales(List<String> finales) {
                 this.finales = finales;
             }
+
+            public List<String> getFinales() {
+                return finales;
+            }
     
             public void setTransiciones(List<String[]> transiciones) {
                 this.transiciones = transiciones;
+            }
+            
+            public List<String[]> getTransiciones() {
+                return transiciones;
             }
     
             public void validate(List<String> errors) {
@@ -554,6 +653,10 @@ public class MainFrame extends JFrame {
                     }
                 }
             
+
+
+
+                
                 // Validar transiciones
                 for (String[] transicion : transiciones) {
                     if (!estados.contains(transicion[0])) {
@@ -589,5 +692,3 @@ public class MainFrame extends JFrame {
         }
     }
 }
-
-
