@@ -45,117 +45,119 @@ public class MainFrame extends JFrame {
     }
     
     private void initUI() {
-    JTabbedPane tabbedPane = new JTabbedPane(); // Crear el contenedor de pestañas
-
-    // Panel principal con botones y tablas
-    JPanel mainPanel = new JPanel();
-    mainPanel.setLayout(new BorderLayout());
-
-    // Panel superior con botones
-    JPanel topPanel = new JPanel();
-    loadFileButton = new JButton("Cargar Archivo .lfp");
-    automataComboBox = new JComboBox<>();
-    graphButton = new JButton("Graficar");
-
-    loadFileButton.addActionListener(new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            cargarArchivo();
-        }
-    });
-
-    graphButton.addActionListener(new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            analizarContenido(); // Generar el archivo .dot y la imagen PNG
-            File imageFile = new File("automata.png");
-            if (imageFile.exists()) {
-                // Forzar la recarga de la imagen
-                ImageIcon imageIcon = new ImageIcon(imageFile.getAbsolutePath());
-                imageLabel.setIcon(imageIcon);
-                imageLabel.setText(""); // Eliminar el texto si se muestra la imagen
-            } else {
-                imageLabel.setIcon(null);
-                imageLabel.setText("No hay imagen para mostrar.");
-            }
+        JTabbedPane tabbedPane = new JTabbedPane(); // Crear el contenedor de pestañas
     
-            // Actualizar el panel de la pestaña para reflejar los cambios
-            imageLabel.revalidate();
-            imageLabel.repaint();
-        }
-    });
-
-    topPanel.add(loadFileButton);
-    topPanel.add(automataComboBox);
-    topPanel.add(graphButton);
-
-    // Panel inferior con tablas y áreas de texto
-    JPanel bottomPanel = new JPanel();
-    bottomPanel.setLayout(new GridLayout(3, 1)); // Cambiar a 3 filas
-
-    // Áreas de texto para mostrar contenido del archivo y errores
-    fileContentArea = new JTextArea(15, 50);
-    fileContentArea.setEditable(false);
-    JScrollPane fileScrollPane = new JScrollPane(fileContentArea);
-
-    errorArea = new JTextArea(10, 50);
-    errorArea.setEditable(false);
-    JScrollPane errorScrollPanel = new JScrollPane(errorArea);
-
-    // Tabla para mostrar tokens
-    tokenTableModel = new DefaultTableModel(new String[]{"Tipo de Token", "Valor"}, 0);
-    tokenTable = new JTable(tokenTableModel);
-    JScrollPane tokenScrollPane = new JScrollPane(tokenTable);
-
-    // Tabla para mostrar errores
-    errorTableModel = new DefaultTableModel(new String[]{"Error", "Descripción"}, 0);
-    JTable errorTable = new JTable(errorTableModel);
-    JScrollPane errorScrollPane = new JScrollPane(errorTable);
-
-    // Agregar componentes al panel inferior
-    bottomPanel.add(new JLabel("Contenido del Archivo:"));
-    bottomPanel.add(fileScrollPane);
-    bottomPanel.add(new JLabel("Errores Léxicos:"));
-    bottomPanel.add(errorScrollPanel);
-    bottomPanel.add(new JLabel("Tokens Encontrados:"));
-    bottomPanel.add(tokenScrollPane);
-
-    // Agregar paneles al panel principal
-    mainPanel.add(topPanel, BorderLayout.NORTH);
-    mainPanel.add(bottomPanel, BorderLayout.CENTER);
-
-    // Agregar el panel principal como una pestaña
-    tabbedPane.addTab("Principal", mainPanel);
-
-    // Crear un panel para mostrar la imagen PNG
-    imageLabel = new JLabel("No hay imagen para mostrar."); // Initialize the instance variable
-    JPanel imagePanel = new JPanel(new BorderLayout()); // Declare and initialize imagePanel
-    JLabel imageLabel = new JLabel("No hay imagen para mostrar.");
-    imagePanel.add(imageLabel, BorderLayout.CENTER);
-
-    // Agregar el panel de imagen como una pestaña
-    tabbedPane.addTab("Visualización de Imagen", imagePanel);
-
-    // Agregar el contenedor de pestañas a la ventana
-    add(tabbedPane);
-
-    // Método para actualizar la imagen en el panel
-    graphButton.addActionListener(new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            analizarContenido();
-            File imageFile = new File("automata.png");
-            if (imageFile.exists()) {
-                ImageIcon imageIcon = new ImageIcon(imageFile.getAbsolutePath());
-                imageLabel.setIcon(imageIcon);
-                imageLabel.setText(""); // Eliminar el texto si se muestra la imagen
-            } else {
-                imageLabel.setIcon(null);
-                imageLabel.setText("No hay imagen para mostrar.");
+        // Panel principal con botones y tablas
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BorderLayout());
+    
+        // Panel superior con botones
+        JPanel topPanel = new JPanel();
+        loadFileButton = new JButton("Cargar Archivo .lfp");
+        automataComboBox = new JComboBox<>();
+        graphButton = new JButton("Graficar");
+        tokenReportButton = new JButton("Reporte de Tokens");
+        errorReportButton = new JButton("Reporte de Errores");
+    
+        // Agregar acciones a los botones
+        loadFileButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                cargarArchivo();
             }
-        }
-    });
-}
+        });
+    
+        graphButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                analizarContenido(); // Generar el archivo .dot y la imagen PNG
+                File imageFile = new File("automata.png");
+                if (imageFile.exists()) {
+                    // Forzar la recarga de la imagen
+                    ImageIcon imageIcon = new ImageIcon(imageFile.getAbsolutePath());
+                    imageLabel.setIcon(imageIcon);
+                    imageLabel.setText(""); // Eliminar el texto si se muestra la imagen
+                } else {
+                    imageLabel.setIcon(null);
+                    imageLabel.setText("No hay imagen para mostrar.");
+                }
+    
+                // Actualizar el panel de la pestaña para reflejar los cambios
+                imageLabel.revalidate();
+                imageLabel.repaint();
+            }
+        });
+    
+        tokenReportButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                generarArchivoHTML(); // Generar el reporte de tokens en HTML
+            }
+        });
+    
+        errorReportButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                generarArchivoErroresHTML(); // Generar el reporte de errores en HTML
+            }
+        });
+    
+        // Agregar botones al panel superior
+        topPanel.add(loadFileButton);
+        topPanel.add(automataComboBox);
+        topPanel.add(graphButton);
+        topPanel.add(tokenReportButton);
+        topPanel.add(errorReportButton);
+    
+        // Panel inferior con tablas y áreas de texto
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.setLayout(new GridLayout(3, 1)); // Cambiar a 3 filas
+    
+        // Áreas de texto para mostrar contenido del archivo y errores
+        fileContentArea = new JTextArea(15, 50);
+        fileContentArea.setEditable(false);
+        JScrollPane fileScrollPane = new JScrollPane(fileContentArea);
+    
+        errorArea = new JTextArea(10, 50);
+        errorArea.setEditable(false);
+        JScrollPane errorScrollPanel = new JScrollPane(errorArea);
+    
+        // Tabla para mostrar tokens
+        tokenTableModel = new DefaultTableModel(new String[]{"Tipo de Token", "Valor"}, 0);
+        tokenTable = new JTable(tokenTableModel);
+        JScrollPane tokenScrollPane = new JScrollPane(tokenTable);
+    
+        // Tabla para mostrar errores
+        errorTableModel = new DefaultTableModel(new String[]{"Error", "Descripción"}, 0);
+        JTable errorTable = new JTable(errorTableModel);
+        JScrollPane errorScrollPane = new JScrollPane(errorTable);
+    
+        // Agregar componentes al panel inferior
+        bottomPanel.add(new JLabel("Contenido del Archivo:"));
+        bottomPanel.add(fileScrollPane);
+        bottomPanel.add(new JLabel("Errores Léxicos:"));
+        bottomPanel.add(errorScrollPanel);
+        bottomPanel.add(new JLabel("Tokens Encontrados:"));
+        bottomPanel.add(tokenScrollPane);
+    
+        // Agregar paneles al panel principal
+        mainPanel.add(topPanel, BorderLayout.NORTH);
+        mainPanel.add(bottomPanel, BorderLayout.CENTER);
+    
+        // Agregar el panel principal como una pestaña
+        tabbedPane.addTab("Principal", mainPanel);
+    
+        // Crear un panel para mostrar la imagen PNG
+        imageLabel = new JLabel("No hay imagen para mostrar."); // Initialize the instance variable
+        JPanel imagePanel = new JPanel(new BorderLayout()); // Declare and initialize imagePanel
+        imagePanel.add(imageLabel, BorderLayout.CENTER);
+    
+        // Agregar el panel de imagen como una pestaña
+        tabbedPane.addTab("Visualización de Imagen", imagePanel);
+    
+        // Agregar el contenedor de pestañas a la ventana
+        add(tabbedPane);
+    }
 
     
     
@@ -186,9 +188,6 @@ public class MainFrame extends JFrame {
     
                 // Mostrar mensaje de éxito después de cargar el archivo
                 JOptionPane.showMessageDialog(this, "Archivo cargado: " + archivoSeleccionado.getName(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
-    
-                // Graficar el autómata automáticamente
-                generarGraphviz();
     
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error al leer el archivo: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);

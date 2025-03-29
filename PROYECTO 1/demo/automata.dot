@@ -1,0 +1,13 @@
+digraph Automaton {
+    rankdir=LR;
+    node [shape=circle];
+    S1 [shape=doublecircle];
+    S3 [shape=doublecircle];
+    inicio [shape=point];
+    inicio -> S0;
+    S0 -> S1 [label="digit"];
+    S1 -> S1 [label="digit"];
+    S1 -> S2 [label="."];
+    S2 -> S3 [label="digit"];
+    S3 -> S3 [label="digit"];
+}
