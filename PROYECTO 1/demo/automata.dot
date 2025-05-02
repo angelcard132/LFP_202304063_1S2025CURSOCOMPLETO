@@ -1,13 +1,21 @@
 digraph Automaton {
     rankdir=LR;
     node [shape=circle];
-    S1 [shape=doublecircle];
-    S3 [shape=doublecircle];
+    E4 [shape=doublecircle];
     inicio [shape=point];
-    inicio -> S0;
-    S0 -> S1 [label="digit"];
-    S1 -> S1 [label="digit"];
-    S1 -> S2 [label="."];
-    S2 -> S3 [label="digit"];
-    S3 -> S3 [label="digit"];
+    inicio -> E0;
+    E0 -> E1 [label="h"];
+    E0 -> E2 [label="b"];
+    E0 -> E3 [label="c"];
+    E0 -> E4 [label="a"];
+    E1 -> E2 [label="b"];
+    E1 -> E3 [label="c"];
+    E1 -> E4 [label="a"];
+    E2 -> E4 [label="c"];
+    E3 -> E4 [label="d"];
+    E4 -> E5 [label="b"];
+    E4 -> E6 [label="c"];
+    E4 -> E4 [label="a"];
+    E5 -> E4 [label="c"];
+    E6 -> E4 [label="d"];
 }
