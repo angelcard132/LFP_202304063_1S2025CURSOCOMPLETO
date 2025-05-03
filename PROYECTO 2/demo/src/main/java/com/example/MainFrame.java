@@ -53,7 +53,6 @@ public class MainFrame extends JFrame {
         setLocationRelativeTo(null);
         initComponents();
     }
-
     // Clases para almacenar los elementos del mundo
     private static class Place {
         String name;
@@ -118,10 +117,12 @@ public class MainFrame extends JFrame {
 
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton reportButton = new JButton("Generar reportes");
-        JButton graphButton = new JButton("Generar gráfico"); // Nuevo botón
+        JButton graphButton = new JButton("Generar gráfico");
+        JButton infoButton = new JButton("Información"); // Nuevo botón
         worldSelector = new JComboBox<>();
         topPanel.add(reportButton);
-        topPanel.add(graphButton); // Agregar el nuevo botón
+        topPanel.add(graphButton);
+        topPanel.add(infoButton); // Añadir el nuevo botón
         topPanel.add(worldSelector);
         
 
@@ -154,6 +155,7 @@ public class MainFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Por favor, selecciona un mundo.");
             }
         });
+        infoButton.addActionListener(e -> mostrarInformacionEstudiante());
     }
 
     private void cargarArchivo() {
@@ -795,6 +797,27 @@ public class MainFrame extends JFrame {
         put("teleférico", new String[]{"dotted", "purple"});
         put("teleferico", new String[]{"dotted", "purple"});      // Versión sin tilde
     }};
+
+    private void mostrarInformacionEstudiante() {
+        String mensaje = "<html><body style='width: 300px; text-align: center;'>" +
+                        "<h2>Información del Estudiante</h2>" +
+                        "<hr>" +
+                        "<p><b>Nombre:</b> Angel Jose Cardenas Pocon</p>" +
+                        "<p><b>Carné:</b> 202304063</p>" +
+                        "<p><b>Curso:</b> Lenguajes Formales y de Programación</p>" +
+                        "<p><b>Sección:</b> B-</p>" +
+                        "<hr>" +
+                        "<p>Facultad de Ingeniería</p>" +
+                        "<p>USAC - Primer Semestre 2025</p>" +
+                        "</body></html>";
+        
+        JOptionPane.showMessageDialog(
+            this,
+            mensaje,
+            "Información del Estudiante",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));
