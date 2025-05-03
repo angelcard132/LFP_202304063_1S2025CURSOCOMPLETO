@@ -1,0 +1,26 @@
+digraph "Expedicion Volcanica" {
+  rankdir=LR;
+  node [fontname="Arial", fontsize=12];
+  edge [fontname="Arial", fontsize=10];
+  "Base" [shape=ellipse, fillcolor="gray", style=filled, label="Base\n(volcan)", pos="0,0!"];
+  "Pantano" [shape=trapezium, fillcolor="darkseagreen", style=filled, label="Pantano\n(pantano)", pos="1,2!"];
+  "Jungla" [shape=parallelogram, fillcolor="forestgreen", style=filled, label="Jungla\n(jungla)", pos="2,4!"];
+  "TemploAntiguo" [shape=octagon, fillcolor="gold", style=filled, label="TemploAntiguo\n(templo)", pos="4,3!"];
+  "RioProfundo" [shape=ellipse, fillcolor="gray", style=filled, label="RioProfundo\n(rio)", pos="3,1!"];
+  "CuevaOculta" [shape=box, fillcolor="gray", style=filled, label="CuevaOculta\n(cueva)", pos="5,0!"];
+  "Base" -> "Pantano" [label="nado", style=dashed, color="deepskyblue"];
+  "Pantano" -> "Jungla" [label="sendero", style=dashed, color="saddlebrown"];
+  "Jungla" -> "TemploAntiguo" [label="puente", style=dotted, color="gray"];
+  "TemploAntiguo" -> "CuevaOculta" [label="camino", style=solid, color="black"];
+  "RioProfundo" -> "Base" [label="carretera", style=solid, color="darkgray"];
+  "CuevaOculta" -> "RioProfundo" [label="teleferico", style=solid, color="black"];
+  "obj_Gema_azul" [shape=egg, fillcolor="deepskyblue", style=filled, label="Gema azul\n(gema)"];
+  "obj_Arma_legendaria" [shape=diamond, fillcolor="orangered", style=filled, label="Arma legendaria\n(arma)"];
+  "obj_Arma_legendaria" -> "Jungla" [style=dashed, dir=none, color=gray];
+  "obj_Bandera_de_conquista" [shape=tab, fillcolor="white", style=filled, label="Bandera de conquista\n(bandera)"];
+  "obj_Bandera_de_conquista" -> "TemploAntiguo" [style=dashed, dir=none, color=gray];
+  "obj_Objeto_magico" [shape=box, fillcolor="yellow", style=filled, label="Objeto magico\n(objetomagico)"];
+  "obj_Objeto_magico" -> "Pantano" [style=dashed, dir=none, color=gray];
+  "obj_Herramienta_rota" [shape=folder, fillcolor="darkkhaki", style=filled, label="Herramienta rota\n(herramienta)"];
+  "obj_Herramienta_rota" -> "CuevaOculta" [style=dashed, dir=none, color=gray];
+}

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
@@ -38,6 +39,12 @@ public class MainFrame extends JFrame {
     private List<String> tokens;
     private List<String> errors;
     private List<String> worlds;
+    
+    // Estructuras para almacenar información del mundo
+    private Map<String, List<Place>> worldPlaces = new HashMap<>();
+    private Map<String, List<Connection>> worldConnections = new HashMap<>();
+    private Map<String, List<WorldObject>> worldObjects = new HashMap<>();
+    private String currentWorld = null;
 
     public MainFrame() {
         setTitle("Generador Visual de Mapas Narrativos");
@@ -45,6 +52,44 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         initComponents();
+    }
+
+    // Clases para almacenar los elementos del mundo
+    private static class Place {
+        String name;
+        String type;
+        int x, y;
+        
+        public Place(String name, String type, int x, int y) {
+            this.name = name;
+            this.type = type;
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    private static class Connection {
+        String from;
+        String to;
+        String type;
+        
+        public Connection(String from, String to, String type) {
+            this.from = from;
+            this.to = to;
+            this.type = type;
+        }
+    }
+
+    private static class WorldObject {
+        String name;
+        String type;
+        String location; // Nombre del lugar o coordenadas
+        
+        public WorldObject(String name, String type, String location) {
+            this.name = name;
+            this.type = type;
+            this.location = location;
+        }
     }
 
     private void initComponents() {
@@ -73,9 +118,12 @@ public class MainFrame extends JFrame {
 
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton reportButton = new JButton("Generar reportes");
+        JButton graphButton = new JButton("Generar gráfico"); // Nuevo botón
         worldSelector = new JComboBox<>();
         topPanel.add(reportButton);
+        topPanel.add(graphButton); // Agregar el nuevo botón
         topPanel.add(worldSelector);
+        
 
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JButton loadButton = new JButton("Cargar archivo");
@@ -98,6 +146,14 @@ public class MainFrame extends JFrame {
         clearButton.addActionListener(e -> fileContentArea.setText(""));
         analyzeButton.addActionListener(e -> analizarArchivo());
         reportButton.addActionListener(e -> generarReportes());
+        graphButton.addActionListener(e -> {
+            String selectedWorld = (String) worldSelector.getSelectedItem();
+            if (selectedWorld != null) {
+                generarGrafico(selectedWorld);
+            } else {
+                JOptionPane.showMessageDialog(this, "Por favor, selecciona un mundo.");
+            }
+        });
     }
 
     private void cargarArchivo() {
@@ -124,6 +180,12 @@ public class MainFrame extends JFrame {
         worlds.clear();
         worldSelector.removeAllItems();
         errorTableModel.setRowCount(0);
+        
+        // Limpiar las estructuras de datos para el mundo
+        worldPlaces.clear();
+        worldConnections.clear();
+        worldObjects.clear();
+        currentWorld = null;
 
         String content = fileContentArea.getText();
         int llavesAbiertas = 0;
@@ -238,6 +300,14 @@ public class MainFrame extends JFrame {
             if (token.startsWith("IDENTIFICADOR: world")) {
                 i++;
                 if (i < total && tokens.get(i).startsWith("CADENA:")) {
+                    String worldName = extraerCadena(tokens.get(i));
+                    currentWorld = worldName;
+                    
+                    // Inicializar listas para este mundo
+                    worldPlaces.put(currentWorld, new ArrayList<>());
+                    worldConnections.put(currentWorld, new ArrayList<>());
+                    worldObjects.put(currentWorld, new ArrayList<>());
+                    
                     i++;
                     if (i < total && tokens.get(i).contains("SIMBOLO: {")) {
                         i++;
@@ -321,6 +391,16 @@ public class MainFrame extends JFrame {
             agregarErrorSintactico("Se esperaba ')' para cerrar coordenadas");
             return -1;
         }
+        
+        // Extraer la información del lugar
+        String placeName = extraerIdentificador(tokens.get(i));
+        String placeType = extraerIdentificador(tokens.get(i + 2));
+        int x = Integer.parseInt(extraerNumero(tokens.get(i + 5)));
+        int y = Integer.parseInt(extraerNumero(tokens.get(i + 7)));
+        
+        if (currentWorld != null) {
+            worldPlaces.get(currentWorld).add(new Place(placeName, placeType, x, y));
+        }
     
         return i + 9;
     }
@@ -351,6 +431,16 @@ public class MainFrame extends JFrame {
             agregarErrorSintactico("Se esperaba tipo de conexión entre comillas");
             return -1;
         }
+        
+        // Extraer la información de la conexión
+        String fromPlace = extraerIdentificador(tokens.get(i));
+        String toPlace = extraerIdentificador(tokens.get(i + 2));
+        String connectionType = extraerCadena(tokens.get(i + 4));
+        
+        if (currentWorld != null) {
+            worldConnections.get(currentWorld).add(
+                new Connection(fromPlace, toPlace, connectionType));
+        }
     
         return i + 5;
     }
@@ -377,9 +467,21 @@ public class MainFrame extends JFrame {
             agregarErrorSintactico("Se esperaba 'at' después del tipo");
             return -1;
         }
+        
+        // Extraer la información del objeto
+        String objectName = extraerCadena(tokens.get(i));
+        String objectType = extraerIdentificador(tokens.get(i + 2));
+        String location;
     
         // caso A: at IDENTIFICADOR
         if (tokens.get(i + 4).startsWith("IDENTIFICADOR:")) {
+            location = extraerIdentificador(tokens.get(i + 4));
+            
+            if (currentWorld != null) {
+                worldObjects.get(currentWorld).add(
+                    new WorldObject(objectName, objectType, location));
+            }
+            
             return i + 5;
         }
     
@@ -389,6 +491,16 @@ public class MainFrame extends JFrame {
             tokens.get(i + 6).contains("SIMBOLO: ,") &&
             tokens.get(i + 7).startsWith("NUMERO:") &&
             tokens.get(i + 8).contains("SIMBOLO: )")) {
+            
+            int x = Integer.parseInt(extraerNumero(tokens.get(i + 5)));
+            int y = Integer.parseInt(extraerNumero(tokens.get(i + 7)));
+            location = x + "," + y;
+            
+            if (currentWorld != null) {
+                worldObjects.get(currentWorld).add(
+                    new WorldObject(objectName, objectType, location));
+            }
+            
             return i + 9;
         }
     
@@ -399,12 +511,23 @@ public class MainFrame extends JFrame {
     private void agregarErrorLexico(String mensaje, int linea, int columna) {
         String info = (linea == -1) ? "Línea: - Columna: -" : "Línea: " + linea + " Columna: " + columna;
         errors.add("Error léxico: " + mensaje + " " + info);
-        errorTableModel.addRow(new String[]{mensaje, "Léxico"});
+        errorTableModel.addRow(new String[]{mensaje + " " + info, "Léxico"});
     }
 
     private void agregarErrorSintactico(String mensaje) {
-        errors.add("Error sintáctico: " + mensaje + " Línea: - Columna: -");
-        errorTableModel.addRow(new String[]{mensaje, "Sintáctico"});
+        // Intentar determinar la línea y columna del token actual
+        String info = "";
+        if (!tokens.isEmpty()) {
+            // Obtener la última posición conocida del análisis
+            String lastToken = tokens.get(Math.min(tokens.size() - 1, Math.max(0, tokens.size() - 1)));
+            String[] parts = lastToken.split(" Línea:");
+            if (parts.length > 1) {
+                info = " Línea:" + parts[1];
+            }
+        }
+        
+        errors.add("Error sintáctico: " + mensaje + info);
+        errorTableModel.addRow(new String[]{mensaje + info, "Sintáctico"});
     }
 
     private void generarReportes() {
@@ -420,12 +543,30 @@ public class MainFrame extends JFrame {
         }
 
         try (PrintWriter writer = new PrintWriter("errores.html")) {
-            writer.println("<html><head><title>Errores</title></head><body><table border='1'><tr><th>Error</th><th>Tipo</th></tr>");
+            writer.println("<html><head><title>Errores</title><style>table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body>");
+            writer.println("<h2>Reporte de Errores</h2>");
+            writer.println("<table><tr><th>Error</th><th>Tipo</th><th>Ubicación</th></tr>");
+            
             for (String error : errors) {
                 String tipo = error.contains("léxico") ? "Léxico" : "Sintáctico";
-                String msg = error.split(" Línea")[0].replace("Error léxico: ", "").replace("Error sintáctico: ", "");
-                writer.printf("<tr><td>%s</td><td>%s</td></tr>\n", msg, tipo);
+                String ubicacion = "No disponible";
+                
+                // Extraer la ubicación (línea y columna)
+                if (error.contains("Línea:")) {
+                    int lineaIndex = error.indexOf("Línea:");
+                    ubicacion = error.substring(lineaIndex);
+                }
+                
+                // Extraer el mensaje de error sin la información de ubicación
+                String msg = error;
+                if (error.contains("Línea:")) {
+                    msg = error.substring(0, error.indexOf("Línea:"));
+                }
+                msg = msg.replace("Error léxico: ", "").replace("Error sintáctico: ", "").trim();
+                
+                writer.printf("<tr><td>%s</td><td>%s</td><td>%s</td></tr>\n", msg, tipo, ubicacion);
             }
+            
             writer.println("</table></body></html>");
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error al generar errores.html");
@@ -433,7 +574,125 @@ public class MainFrame extends JFrame {
 
         JOptionPane.showMessageDialog(this, "Archivos de reporte generados correctamente.");
     }
-        // Mapeos de tipos quemados
+    
+    private void generarGrafico(String worldName) {
+        if (!worldPlaces.containsKey(worldName) || worldPlaces.get(worldName).isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El mundo seleccionado no tiene elementos para graficar.");
+            return;
+        }
+        
+        try {
+            // Generar archivo DOT
+            StringBuilder dot = new StringBuilder();
+            dot.append("digraph \"").append(worldName).append("\" {\n");
+            dot.append("  rankdir=LR;\n");
+            dot.append("  node [fontname=\"Arial\", fontsize=12];\n");
+            dot.append("  edge [fontname=\"Arial\", fontsize=10];\n");
+            
+            // Agregar nodos (lugares)
+            for (Place place : worldPlaces.get(worldName)) {
+                String[] style = tiposLugar.getOrDefault(place.type, new String[]{"ellipse", "gray"});
+                dot.append("  \"").append(place.name).append("\" [");
+                dot.append("shape=").append(style[0]).append(", ");
+                dot.append("fillcolor=\"").append(style[1]).append("\", ");
+                dot.append("style=filled, ");
+                dot.append("label=\"").append(place.name).append("\\n(").append(place.type).append(")\", ");
+                dot.append("pos=\"").append(place.x).append(",").append(place.y).append("!\"];\n");
+            }
+            
+            // Agregar conexiones
+            if (worldConnections.containsKey(worldName) && worldConnections.get(worldName) != null) {
+                for (Connection conn : worldConnections.get(worldName)) {
+                    String[] style = tiposConexion.getOrDefault(conn.type, new String[]{"solid", "black"});
+                    dot.append("  \"").append(conn.from).append("\" -> \"").append(conn.to).append("\" [");
+                    dot.append("label=\"").append(conn.type).append("\", ");
+                    dot.append("style=").append(style[0]).append(", ");
+                    dot.append("color=\"").append(style[1]).append("\"];\n");
+                }
+            }
+            
+            // Agregar objetos
+            if (worldObjects.containsKey(worldName) && worldObjects.get(worldName) != null) {
+                for (WorldObject obj : worldObjects.get(worldName)) {
+                    String[] style = tiposObjeto.getOrDefault(obj.type, new String[]{"box", "yellow"});
+                    String objNodeName = "obj_" + obj.name.replaceAll("\\s+", "_");
+                    
+                    dot.append("  \"").append(objNodeName).append("\" [");
+                    dot.append("shape=").append(style[0]).append(", ");
+                    dot.append("fillcolor=\"").append(style[1]).append("\", ");
+                    dot.append("style=filled, ");
+                    dot.append("label=\"").append(obj.name).append("\\n(").append(obj.type).append(")\"];\n");
+                    
+                    // Si el objeto está ubicado en un lugar, conectarlo con una línea punteada
+                    if (!obj.location.contains(",")) { // No es coordenada, es un lugar
+                        dot.append("  \"").append(objNodeName).append("\" -> \"").append(obj.location)
+                           .append("\" [style=dashed, dir=none, color=gray];\n");
+                    }
+                }
+            }
+            
+            dot.append("}\n");
+            
+            // Guardar el archivo DOT
+            File dotFile = new File("graph_" + worldName + ".dot");
+            try (PrintWriter writer = new PrintWriter(dotFile)) {
+                writer.print(dot.toString());
+            }
+            
+            // Ejecutar Graphviz para generar la imagen
+            ProcessBuilder pb = new ProcessBuilder("dot", "-Tpng", dotFile.getAbsolutePath(), "-o", 
+                                                 "graph_" + worldName + ".png");
+            Process process = pb.start();
+            int exitCode = process.waitFor();
+            
+            if (exitCode == 0) {
+                // Mostrar la imagen generada
+                File imgFile = new File("graph_" + worldName + ".png");
+                if (imgFile.exists()) {
+                    imageArea.setIcon(new ImageIcon(imgFile.getAbsolutePath()));
+                    imageArea.setText("");
+                    JOptionPane.showMessageDialog(this, "Gráfico generado con éxito.");
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "Error al generar el gráfico. Asegúrate de tener Graphviz instalado.");
+            }
+            
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error al generar el gráfico: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    // Métodos auxiliares para extraer información de los tokens
+    private String extraerCadena(String token) {
+        // Extraer el contenido entre comillas
+        int inicioComillas = token.indexOf('"');
+        int finComillas = token.lastIndexOf('"');
+        if (inicioComillas != -1 && finComillas != -1 && inicioComillas != finComillas) {
+            return token.substring(inicioComillas + 1, finComillas);
+        }
+        return "";
+    }
+
+    private String extraerIdentificador(String token) {
+        // Extraer el identificador después de "IDENTIFICADOR: "
+        if (token.startsWith("IDENTIFICADOR: ")) {
+            String[] parts = token.split(" Línea:");
+            return parts[0].substring("IDENTIFICADOR: ".length());
+        }
+        return "";
+    }
+
+    private String extraerNumero(String token) {
+        // Extraer el número después de "NUMERO: "
+        if (token.startsWith("NUMERO: ")) {
+            String[] parts = token.split(" Línea:");
+            return parts[0].substring("NUMERO: ".length());
+        }
+        return "0";
+    }
+        
+    // Mapeos de tipos quemados
     Map<String, String[]> tiposLugar = new HashMap<>() {{
         put("playa",     new String[]{"ellipse", "lightblue"});
         put("cueva",     new String[]{"box", "gray"});
