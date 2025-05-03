@@ -264,7 +264,27 @@ public class MainFrame extends JFrame {
                 tokens.add("NUMERO: " + currentToken.toString() + " Línea: " + line + " Columna: " + startCol);
                 currentToken.setLength(0);
                 column++;
-            } else {
+            } 
+            // En el método analizarArchivo(), modifica la parte del análisis de dígitos para aceptar números negativos
+            // Agrega este caso justo antes del bloque para Character.isDigit(c)
+            else if (c == '-' && i + 1 < length && Character.isDigit(content.charAt(i + 1))) {
+                int startCol = column;
+                currentToken.append(c);
+                i++;
+                column++;
+                currentToken.append(content.charAt(i));
+                
+                while (i + 1 < length && Character.isDigit(content.charAt(i + 1))) {
+                    i++;
+                    currentToken.append(content.charAt(i));
+                    column++;
+                }
+                
+                tokens.add("NUMERO: " + currentToken.toString() + " Línea: " + line + " Columna: " + startCol);
+                currentToken.setLength(0);
+                column++;
+            }
+            else {
                 agregarErrorLexico("símbolo no permitido '" + c + "'", line, column);
                 column++;
             }
@@ -326,12 +346,16 @@ public class MainFrame extends JFrame {
                                 break;
                             }
     
-                            if (i == -1) break; // Error crítico, salimos
+                            if (i == -1) break; // Error crítico, saltamos este bloque
                         }
     
                         if (i < total && tokens.get(i).contains("SIMBOLO: }")) {
                             // Fin del bloque
                             i++;
+                            // Después de cerrar un bloque, si hay una coma, la saltamos
+                            if (i < total && tokens.get(i).contains("SIMBOLO: ,")) {
+                                i++;
+                            }
                         } else {
                             agregarErrorSintactico("Se esperaba '}' para cerrar el bloque world");
                         }
@@ -342,10 +366,10 @@ public class MainFrame extends JFrame {
                     agregarErrorSintactico("Se esperaba una cadena con el nombre del mundo después de 'world'");
                 }
             } else {
-                agregarErrorSintactico("Se esperaba 'world' al inicio del archivo");
+                // Si no es un bloque world, pasamos al siguiente token
+                i++;
             }
-    
-            break; // solo analizamos un bloque world por ahora
+            // Quitamos el break para que continue analizando más bloques world
         }
     }
     
@@ -575,6 +599,17 @@ public class MainFrame extends JFrame {
         JOptionPane.showMessageDialog(this, "Archivos de reporte generados correctamente.");
     }
     
+    private String normalizarTipo(String tipo) {
+        // Convertir a minúsculas y normalizar caracteres especiales
+        return tipo.toLowerCase()
+            .replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+            .replace("-", " ");
+    }
+
     private void generarGrafico(String worldName) {
         if (!worldPlaces.containsKey(worldName) || worldPlaces.get(worldName).isEmpty()) {
             JOptionPane.showMessageDialog(this, "El mundo seleccionado no tiene elementos para graficar.");
@@ -590,20 +625,45 @@ public class MainFrame extends JFrame {
             dot.append("  edge [fontname=\"Arial\", fontsize=10];\n");
             
             // Agregar nodos (lugares)
+            int minX = Integer.MAX_VALUE;
+            int minY = Integer.MAX_VALUE;
+            int maxX = Integer.MIN_VALUE;
+            int maxY = Integer.MIN_VALUE;
+
+            // Primero, determinar los límites del plano
             for (Place place : worldPlaces.get(worldName)) {
-                String[] style = tiposLugar.getOrDefault(place.type, new String[]{"ellipse", "gray"});
+                minX = Math.min(minX, place.x);
+                minY = Math.min(minY, place.y);
+                maxX = Math.max(maxX, place.x);
+                maxY = Math.max(maxY, place.y);
+            }
+
+            // Calcular el desplazamiento para evitar coordenadas negativas en Graphviz
+            int offsetX = minX < 0 ? -minX : 0;
+            int offsetY = minY < 0 ? -minY : 0;
+
+            // Agregar nodos con coordenadas ajustadas
+            for (Place place : worldPlaces.get(worldName)) {
+                String normalizedType = normalizarTipo(place.type);
+                String[] style = tiposLugar.getOrDefault(normalizedType, new String[]{"ellipse", "gray"});
+                
+                // Ajustar coordenadas para el plano de Graphviz (donde Y crece hacia abajo)
+                int adjustedX = place.x + offsetX;
+                int adjustedY = maxY - place.y + offsetY; // Invertir Y para que crezca hacia abajo
+                
                 dot.append("  \"").append(place.name).append("\" [");
                 dot.append("shape=").append(style[0]).append(", ");
                 dot.append("fillcolor=\"").append(style[1]).append("\", ");
                 dot.append("style=filled, ");
                 dot.append("label=\"").append(place.name).append("\\n(").append(place.type).append(")\", ");
-                dot.append("pos=\"").append(place.x).append(",").append(place.y).append("!\"];\n");
+                dot.append("pos=\"").append(adjustedX).append(",").append(adjustedY).append("!\"];\n");
             }
             
             // Agregar conexiones
             if (worldConnections.containsKey(worldName) && worldConnections.get(worldName) != null) {
                 for (Connection conn : worldConnections.get(worldName)) {
-                    String[] style = tiposConexion.getOrDefault(conn.type, new String[]{"solid", "black"});
+                    String normalizedType = normalizarTipo(conn.type);
+                    String[] style = tiposConexion.getOrDefault(normalizedType, new String[]{"solid", "black"});
                     dot.append("  \"").append(conn.from).append("\" -> \"").append(conn.to).append("\" [");
                     dot.append("label=\"").append(conn.type).append("\", ");
                     dot.append("style=").append(style[0]).append(", ");
@@ -614,7 +674,8 @@ public class MainFrame extends JFrame {
             // Agregar objetos
             if (worldObjects.containsKey(worldName) && worldObjects.get(worldName) != null) {
                 for (WorldObject obj : worldObjects.get(worldName)) {
-                    String[] style = tiposObjeto.getOrDefault(obj.type, new String[]{"box", "yellow"});
+                    String normalizedType = normalizarTipo(obj.type);
+                    String[] style = tiposObjeto.getOrDefault(normalizedType, new String[]{"box", "yellow"});
                     String objNodeName = "obj_" + obj.name.replaceAll("\\s+", "_");
                     
                     dot.append("  \"").append(objNodeName).append("\" [");
@@ -699,10 +760,13 @@ public class MainFrame extends JFrame {
         put("templo",    new String[]{"octagon", "gold"});
         put("jungla",    new String[]{"parallelogram", "forestgreen"});
         put("montaña",   new String[]{"triangle", "sienna"});
+        put("montana",   new String[]{"triangle", "sienna"});     // Versión sin tilde
         put("pueblo",    new String[]{"house", "burlywood"});
         put("isla",      new String[]{"invtriangle", "lightgoldenrod"});
         put("río",       new String[]{"hexagon", "deepskyblue"});
+        put("rio",       new String[]{"hexagon", "deepskyblue"}); // Versión sin tilde
         put("volcán",    new String[]{"doublecircle", "orangered"});
+        put("volcan",    new String[]{"doublecircle", "orangered"}); // Versión sin tilde
         put("pantano",   new String[]{"trapezium", "darkseagreen"});
     }};
 
@@ -711,7 +775,9 @@ public class MainFrame extends JFrame {
         put("llave",         new String[]{"pentagon", "lightsteelblue"});
         put("arma",          new String[]{"diamond", "orangered"});
         put("objeto mágico", new String[]{"component", "violet"});
+        put("objeto magico", new String[]{"component", "violet"}); // Versión sin tilde
         put("poción",        new String[]{"cylinder", "plum"});
+        put("pocion",        new String[]{"cylinder", "plum"});    // Versión sin tilde
         put("trampa",        new String[]{"hexagon", "crimson"});
         put("libro",         new String[]{"note", "navajowhite"});
         put("herramienta",   new String[]{"folder", "darkkhaki"});
@@ -727,6 +793,7 @@ public class MainFrame extends JFrame {
         put("nado",       new String[]{"dashed", "deepskyblue"});
         put("lancha",     new String[]{"solid", "blue"});
         put("teleférico", new String[]{"dotted", "purple"});
+        put("teleferico", new String[]{"dotted", "purple"});      // Versión sin tilde
     }};
 
     public static void main(String[] args) {
